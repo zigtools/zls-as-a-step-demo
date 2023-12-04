@@ -1,0 +1,11 @@
+.{
+    .name = "zls-as-a-step",
+    .version = "0.1.0",
+
+    .dependencies = .{
+        .zls = .{
+            .path = "../zls",
+        },
+    },
+    .paths = .{""},
+}
