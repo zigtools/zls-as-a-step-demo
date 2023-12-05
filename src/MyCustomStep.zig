@@ -8,12 +8,15 @@ const Step = Build.Step;
 const build_runner = @import("root");
 const dependencies = build_runner.dependencies;
 
+pub const Variant = enum { hello, goodbye };
+
 step: Step,
 generated_file: Build.GeneratedFile,
+variant: Variant,
 
 pub const base_id = .custom;
 
-pub fn create(owner: *Build) *MyCustomStep {
+pub fn create(owner: *Build, variant: Variant) *MyCustomStep {
     const self = owner.allocator.create(MyCustomStep) catch @panic("OOM");
     self.* = .{
         .step = Step.init(.{
@@ -23,6 +26,7 @@ pub fn create(owner: *Build) *MyCustomStep {
             .makeFn = make,
         }),
         .generated_file = undefined,
+        .variant = variant,
     };
 
     self.generated_file = .{ .step = &self.step };
@@ -39,10 +43,18 @@ fn make(step: *Step, prog_node: *std.Progress.Node) !void {
     const b = step.owner;
     const self = @fieldParentPtr(MyCustomStep, "step", step);
 
-    self.generated_file.path = try b.cache_root.join(b.allocator, &.{"hello.zig"});
+    const hello_path = try b.cache_root.join(b.allocator, &.{"hello.zig"});
+    const hello_file = try std.fs.createFileAbsolute(hello_path, .{});
+    defer hello_file.close();
+    try hello_file.writer().writeAll("pub const hello = \"Hi!\";");
 
-    const file = try std.fs.createFileAbsolute(self.generated_file.path.?, .{});
-    defer file.close();
+    const goodbye_path = try b.cache_root.join(b.allocator, &.{"goodbye.zig"});
+    const goodbye_file = try std.fs.createFileAbsolute(goodbye_path, .{});
+    defer goodbye_file.close();
+    try goodbye_file.writer().writeAll("pub const goodbye = \"Bye!\";");
 
-    try file.writer().writeAll("pub const hello = \"Hi!\";");
+    self.generated_file.path = switch (self.variant) {
+        .hello => hello_path,
+        .goodbye => goodbye_path,
+    };
 }

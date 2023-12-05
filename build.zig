@@ -6,7 +6,14 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const my_custom_step = MyCustomStep.create(b);
+    const my_custom_step = MyCustomStep.create(
+        b,
+        b.option(
+            MyCustomStep.Variant,
+            "variant",
+            "what custom step variant should be emitted? used to test zls-build-info.json reloading",
+        ) orelse .hello,
+    );
 
     const exe = b.addExecutable(.{
         .name = "zls-as-step",
@@ -15,7 +22,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     exe.step.dependOn(&my_custom_step.step);
-    exe.addAnonymousModule("hello", .{ .source_file = my_custom_step.getOutput() });
+    exe.addAnonymousModule("hello-or-goodbye", .{ .source_file = my_custom_step.getOutput() });
     exe.addAnonymousModule("my-package", .{ .source_file = .{ .path = "my-package/lib.zig" } });
     b.installArtifact(exe);
 
@@ -24,9 +31,9 @@ pub fn build(b: *std.Build) !void {
     // Depend on everything you want ZLS to be able to complete
     extract_build_info.step.dependOn(&exe.step);
 
-    const install_zls = b.addInstallArtifact(b.dependency("zls", .{}).artifact("zls"), .{});
-    install_zls.step.dependOn(&extract_build_info.step);
+    b.getInstallStep().dependOn(&extract_build_info.step);
 
+    const install_zls = b.addInstallArtifact(b.dependency("zls", .{}).artifact("zls"), .{});
     const tooling_step = b.step("install-zls", "Install tooling (ZLS)");
     tooling_step.dependOn(&install_zls.step);
 }
