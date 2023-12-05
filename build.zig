@@ -6,14 +6,13 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const my_custom_step = MyCustomStep.create(
-        b,
-        b.option(
-            MyCustomStep.Variant,
-            "variant",
-            "what custom step variant should be emitted? used to test zls-build-info.json reloading",
-        ) orelse .hello,
-    );
+    const variant = b.option(
+        MyCustomStep.Variant,
+        "variant",
+        "what custom step variant should be emitted? used to test zls-build-info.json reloading",
+    ) orelse .hello;
+
+    const my_custom_step = MyCustomStep.create(b, variant);
 
     const exe = b.addExecutable(.{
         .name = "zls-as-step",
@@ -26,7 +25,7 @@ pub fn build(b: *std.Build) !void {
     exe.addAnonymousModule("my-package", .{ .source_file = .{ .path = "my-package/lib.zig" } });
     b.installArtifact(exe);
 
-    const extract_build_info = zls.ExtractBuildInfo.create(b, .{});
+    const extract_build_info = zls.ExtractBuildInfo.create(b);
 
     // Depend on everything you want ZLS to be able to complete
     extract_build_info.step.dependOn(&exe.step);
